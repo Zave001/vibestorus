@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Кабинет боярина</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='28' fill='%237a1f1a' stroke='%23c9a24b' stroke-width='4'/%3E%3Cpath d='M32 14v36M18 26h28' stroke='%23c9a24b' stroke-width='6' stroke-linecap='round'/%3E%3C/svg%3E">
+<style>
+:root{--wall:#2a1f1a;--wood:#4a2f1c;--wood2:#3a2415;--paper:#e8dcbf;--ink:#2b1d12;--gold:#c9a24b;--red:#c0392b;--text:#f1e6cc;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--wall);color:var(--text);font-family:Georgia,"Times New Roman",serif;overflow:hidden}
+#room{position:relative;width:100%;height:100%;max-width:1100px;margin:0 auto;display:grid;grid-template-columns:1fr 1.6fr 1fr;grid-template-rows:1fr auto;gap:0 14px;padding:14px}
+.hud{grid-column:1;grid-row:1/3;align-self:start;display:flex;flex-direction:column;gap:8px}
+.turn{font-size:15px;text-align:center;opacity:.85}
+.stat{background:var(--wood2);border:2px solid var(--gold);padding:6px 12px;display:grid;grid-template-columns:1fr auto;align-items:center;font-size:16px;transition:background .3s}
+.stat b{font-size:24px;font-variant-numeric:tabular-nums;text-align:right}
+.stat small{grid-column:1/3;opacity:.7;font-size:12px}
+.stat.low{background:#5a1612;border-color:var(--red);animation:pulse 1s infinite}
+.stat.low b{color:#ff8a7a}
+@keyframes pulse{50%{box-shadow:0 0 18px var(--red)}}
+.wallmap{grid-column:2;grid-row:1;position:relative;min-height:0;background:var(--wood);border:6px solid var(--wood2);padding:10px;display:flex;flex-direction:column}
+.wallmap h2{margin:0 0 6px;font-size:16px;font-weight:normal;text-align:center}
+.wallmap svg{flex:1;min-height:0;width:100%;background:#d9c9a0}
+.right{grid-column:3;grid-row:1/3;align-self:start;display:flex;flex-direction:column;gap:12px}
+.flag{border:2px solid var(--gold);background:#7a1f1a;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:10px;font-size:14px;min-height:140px;color:var(--text);font-family:inherit}
+.flag svg{width:70px;height:70px}
+.drawer{margin-bottom:8px}
+.stack{display:block;width:100%;height:44px;cursor:pointer;background:var(--paper);color:var(--ink);border:2px solid var(--ink);font:inherit;font-size:16px;text-align:center;padding:0 12px}
+.stack:hover{background:#f6edd2}
+.desk{grid-column:2;grid-row:2;background:linear-gradient(var(--wood),var(--wood2));border-top:4px solid var(--gold);display:flex;justify-content:space-around;align-items:flex-end;padding:14px 10px;min-height:150px}
+.item{background:none;border:0;color:var(--text);font:inherit;font-size:14px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px}
+.item svg{width:90px;height:80px;transition:transform .15s}
+.item:hover svg,.item:focus-visible svg{transform:translateY(-4px)}
+.item:focus-visible,.stack:focus-visible{outline:3px solid var(--gold);outline-offset:4px}
+.item.glow svg{filter:drop-shadow(0 0 10px var(--gold))}
+.item.alert{outline:3px solid var(--red);outline-offset:4px;border-radius:10px;animation:pulse 1s infinite}
+.tug{border:2px solid var(--gold);background:var(--wood2);padding:10px;font-size:12px}
+.tug h4{margin:0 0 6px;font-size:13px;font-weight:normal;text-align:center}
+.tug .ends{display:flex;justify-content:space-between;align-items:flex-end;gap:6px;text-align:center}
+.tug .ends div{display:flex;flex-direction:column;align-items:center;width:46%;gap:2px}
+.tug svg{width:30px;height:30px}
+.segs{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin:8px 0 6px}
+.seg{height:18px;background:#5a4030;border:1px solid var(--gold);position:relative}
+.seg.mid{background:#7a6440}
+.seg.on{background:var(--gold)}
+.seg.on::after{content:"";position:absolute;inset:3px;border-radius:50%;background:var(--red)}
+.tugcap{text-align:center;opacity:.85}
+#toast{position:absolute;left:50%;top:70px;transform:translateX(-50%);background:var(--paper);color:var(--ink);padding:8px 14px;border:2px solid var(--ink);opacity:0;pointer-events:none;transition:opacity .3s;max-width:90%;text-align:center;z-index:5}
+#toast.on{opacity:1}
+#modal{position:fixed;inset:0;background:rgba(10,6,3,.75);display:none;align-items:center;justify-content:center;padding:16px;z-index:10}
+#modal.on{display:flex}
+.card{background:var(--paper);color:var(--ink);max-width:600px;width:100%;max-height:92%;overflow:auto;padding:22px;border:3px double var(--ink);line-height:1.5}
+.card h3{margin:0 0 4px;font-size:22px}
+.card .yr{opacity:.65;margin:0 0 10px}
+.card p{margin:0 0 12px;max-width:60ch}
+.opt{display:block;width:100%;text-align:left;margin:8px 0;padding:10px 12px;background:#f6edd2;border:2px solid var(--ink);font:inherit;color:var(--ink);cursor:pointer}
+.opt:hover,.opt:focus-visible{background:var(--gold);outline:none}
+.stat>span i{display:inline-block;margin-left:4px;vertical-align:middle;font-style:normal}
+.stat>span i svg{width:16px;height:16px;margin-left:3px;vertical-align:middle}
+.dl{font-style:normal;font-size:13px;margin-left:6px;font-weight:bold;display:inline-block}
+.dl.pos{color:#7fd67f;animation:pop .8s ease-out}
+.dl.neg{color:#ff7a6a;animation:pop .8s ease-out}
+@keyframes pop{0%{transform:scale(1.9);opacity:0}50%{opacity:1}100%{transform:scale(1)}}
+.opt.lock{opacity:.6;cursor:not-allowed}
+.opt.lock:hover{background:#f6edd2}
+.opt .tip{display:none;margin-top:4px;color:#8a2f26;opacity:1}
+.opt.lock:hover .tip,.opt.lock:focus-visible .tip{display:block}
+.opt svg.lk{width:16px;height:16px;vertical-align:-2px;margin-right:6px}
+.seg{font-size:10px;line-height:16px;text-align:center;color:var(--text)}
+.seg.on{color:var(--ink);font-weight:bold;outline:2px solid var(--red);z-index:1}
+.seg.on::after{content:none}
+.scn{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:12px 0}
+.sc{padding:14px;border:2px solid var(--ink);background:#f6edd2;font:inherit;color:var(--ink);text-align:left;cursor:pointer}
+.sc:hover:not(.lock),.sc:focus-visible:not(.lock){background:var(--gold);outline:none}
+.sc b{display:block;font-size:19px;margin-bottom:6px}
+.sc small{display:block;opacity:.85}
+.sc.lock{opacity:.6;cursor:not-allowed}
+.sc svg.lk{width:22px;height:22px;vertical-align:-4px;margin-right:6px}
+@media(max-width:520px){.scn{grid-template-columns:1fr}}
+.frow{display:flex;gap:10px}
+.frow .flag{flex:1;min-width:0;aspect-ratio:1/1;min-height:0;padding:4px}
+.frow .flag svg{width:56%;height:auto}
+.icon{flex:1;min-width:0;aspect-ratio:1/1;border:2px solid var(--gold);background:#1a120c;padding:4px;cursor:pointer;display:block}
+.icon{position:relative}
+.icon.hl{outline:3px solid var(--gold);outline-offset:3px;animation:pulseg 1s infinite}
+.stat[role=button]{cursor:pointer}
+.stat[role=button]:hover,.stat[role=button]:focus-visible{background:#4a2f1c;outline:none}
+.stat.pat{cursor:pointer}
+.stat.pat:hover,.stat.pat:focus-visible{background:#4a2f1c;outline:none}
+.ib{position:absolute;right:4px;bottom:4px;background:var(--gold);color:var(--ink);font-size:12px;font-weight:bold;padding:0 6px;border:1px solid var(--ink)}
+.icon:hover,.icon:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.icon svg{width:100%;height:100%;display:block}
+.item.nudge{outline:3px solid var(--gold);outline-offset:4px;border-radius:10px;animation:pulseg 1s infinite}
+@keyframes pulseg{50%{box-shadow:0 0 18px var(--gold)}}
+.opt.sel{background:var(--gold);border-color:var(--red)}
+.opt:disabled{opacity:.4;cursor:not-allowed;background:#f6edd2}
+.close{margin-top:8px;padding:8px 14px;font:inherit;background:var(--ink);color:var(--paper);border:0;cursor:pointer}
+.sig{text-align:right;font-style:italic;opacity:.8}
+.guide li{margin-bottom:10px;padding:4px 6px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin:10px 0}
+.tile{padding:10px;border:2px solid var(--ink);background:#f6edd2;font:inherit;color:var(--ink);text-align:left;cursor:default}
+.tile.on{background:#e7b3a8;border-color:var(--red)}
+.tile.click{cursor:pointer}
+.tile b{display:block;margin-bottom:4px}
+.tile small{display:block;margin-top:6px;opacity:.8}
+@media(max-width:720px){
+ #room{grid-template-columns:1fr 1fr;grid-template-rows:auto auto auto;overflow:auto;gap:10px 14px}
+ body{overflow:auto}
+ .hud{grid-column:1;grid-row:1}.right{grid-column:2;grid-row:1}
+ .wallmap{grid-column:1/3;grid-row:2;min-height:220px}
+ .desk{grid-column:1/3;grid-row:3}
+}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div id="room">
+ <div class="hud">
+  <div class="turn" id="turn"></div>
+  <div class="stat" id="sM" role="button" tabindex="0" title="Показать, из чего складывается прирост"><span>Золото<i id="iM"></i></span><b><span id="vM"></span><em class="dl" id="dM"></em></b><small id="rM"></small></div>
+  <div class="stat" id="sK" role="button" tabindex="0" title="Показать, из чего складывается прирост"><span>Крепостные<i id="iK"></i></span><b><span id="vK"></span><em class="dl" id="dK"></em></b><small id="rK"></small></div>
+  <div class="stat" id="sA" role="button" tabindex="0" title="Показать, из чего складывается прирост"><span>Авторитет<i id="iA"></i></span><b><span id="vA"></span><em class="dl" id="dA"></em></b><small id="rA"></small></div>
+ </div>
+ <div class="wallmap">
+  <div class="drawer"><button class="stack" id="stack">📜 Донесения</button></div>
+  <h2>Русь около 1500 года</h2>
+  <svg viewBox="0 0 300 160" aria-label="Карта (пока только для просмотра)">
+   <path d="M14 113 L33 119 L52 127 L61 136 L56 155 L40 160 L0 160 L0 120Z" fill="#c9b98f"/>
+   <path d="M56 155 L94 146 L122 143 L160 122 L216 118 L235 103 L300 66 L300 160 L56 160Z" fill="#cdbd92"/>
+   <path d="M9 90 L38 75 L56 19 L75 2 L122 28 L160 28 L254 19 L300 9 L300 66 L235 103 L216 118 L160 122 L122 143 L94 146 L56 155 L61 136 L52 127 L33 119 L14 113Z" fill="#b9a46e" stroke="#4a2f1c" stroke-width="2"/>
+   <ellipse cx="103" cy="38" rx="22" ry="10" fill="#9fb7b0"/>
+   <g fill="#4a2f1c"><circle cx="100" cy="125" r="2.5"/><circle cx="40" cy="99" r="2"/><circle cx="84" cy="114" r="2"/><circle cx="121" cy="107" r="2"/><circle cx="212" cy="98" r="2"/><circle cx="9" cy="90" r="2"/><circle cx="12" cy="105" r="2"/></g>
+   <circle cx="112" cy="128" r="7" fill="#8a2f26" opacity=".85"/>
+   <g font-size="7" fill="#2b1d12"><text x="88" y="134">Москва</text><text x="44" y="98">Новгород</text><text x="70" y="110">Тверь</text><text x="124" y="106">Ярославль</text><text x="198" y="94">Вятка</text><text x="14" y="88">Ивангород</text><text x="15" y="108">Псков</text><text x="118" y="140" fill="#8a2f26">Ваш удел</text><text x="14" y="146" font-style="italic">Литва</text><text x="190" y="150" font-style="italic">Орда, Крым</text><text x="160" y="60" font-style="italic">Московское государство</text></g>
+  </svg>
+ </div>
+ <div class="right">
+ <div class="frow"><div class="flag" aria-label="Флаг">
+  <svg viewBox="0 0 70 70"><circle cx="35" cy="28" r="20" fill="none" stroke="#c9a24b" stroke-width="3"/><circle cx="35" cy="28" r="12" fill="#c9a24b" opacity=".35"/><path d="M35 8v40M22 24h26" stroke="#c9a24b" stroke-width="3"/></svg>
+  Флаг
+ </div>
+ <button class="icon" id="icon" aria-label="Икона"></button></div>
+ <div class="stat pat" id="patbox" role="button" tabindex="0" title="Выбрать икону"><span>Авторитет Патриарха</span><b><span id="vP"></span><em class="dl" id="dP"></em></b></div>
+ <div class="tug"><h4>Перетягивание каната</h4>
+  <div class="ends">
+   <div><svg viewBox="0 0 32 32" aria-hidden="true"><g fill="#c9a24b" stroke="#2b1d12" stroke-width="1"><rect x="2" y="3" width="12" height="12" transform="rotate(-8 8 9)"/><rect x="18" y="1" width="12" height="12" transform="rotate(10 24 7)"/><rect x="1" y="19" width="12" height="12" transform="rotate(6 7 25)"/><rect x="19" y="19" width="12" height="12" transform="rotate(-12 25 25)"/></g></svg>Раздробленность</div>
+   <div><svg viewBox="0 0 32 32" aria-hidden="true"><rect x="2" y="2" width="28" height="28" fill="#c9a24b" stroke="#2b1d12" stroke-width="2"/></svg>Централизация</div>
+  </div>
+  <div class="segs" id="segs"></div><div class="tugcap" id="tugcap"></div>
+ </div>
+</div>
+ <div class="desk">
+  <button class="item" id="candle">
+   <svg viewBox="0 0 90 80"><rect x="40" y="30" width="10" height="38" fill="#e8dcbf"/><path d="M45 14c-6 8-3 14 0 16 3-2 6-8 0-16z" fill="#f2b94a"/><rect x="28" y="68" width="34" height="6" fill="#c9a24b"/></svg>
+   Модификаторы
+  </button>
+  <button class="item" id="book">
+   <svg viewBox="0 0 90 80"><path d="M8 18 Q27 10 45 20 Q63 10 82 18 V66 Q63 58 45 68 Q27 58 8 66Z" fill="#e8dcbf" stroke="#2b1d12" stroke-width="2"/><path d="M45 20V68" stroke="#2b1d12" stroke-width="2"/></svg>
+   Книга: выбор
+  </button>
+  <button class="item" id="ink">
+   <svg viewBox="0 0 90 80"><path d="M30 50h30l6 22H24z" fill="#1a1a1a" stroke="#c9a24b" stroke-width="2"/><path d="M48 50 L72 8 L66 6 L44 50z" fill="#e8dcbf" stroke="#2b1d12" stroke-width="1.5"/></svg>
+   <span id="inkL">Чернильница</span>
+  </button>
+ </div>
+ <div id="toast" role="status"></div>
+</div>
+<div id="modal"><div class="card" id="card"></div></div>
+
+<script>
+// Событие: [год, заголовок, текст, [вариант: [текст, деньги, крепостные, авторитет, исторически верный(1/0)]]]
+var EV=[
+["1462","Присяга новому князю","Умер Василий Тёмный. На престол вступает двадцатидвухлетний Иван III и ждёт подтверждения службы от бояр.",[
+["Принести присягу и подтвердить службу",5,5,5,1],["Затянуть с присягой, выжидая",0,0,-5,0],["Поддержать притязания дальнего родича",5,5,-25,0],["Откупиться дарами вместо клятвы",-20,-20,10,0]]],
+["1463","Ярославские князья уступают права","Ярославские князья уступают свои права Москве. Великий князь ждёт от московских бояр поддержки присоединения.",[
+["Поддержать присоединение и принять ярославцев в службу",-10,10,10,1],["Искать покровительства Литвы",10,10,-15,0],["Скупать земли ярославцев за свой счёт",-25,20,-5,0],["Не вмешиваться",0,0,-10,0]]],
+["1467","Казанский поход","Москва воюет с Казанским ханством (1467–1469). Великий князь требует людей в рать.",[
+["Выставить дружину в московскую рать",-10,-25,20,1],["Откупиться деньгами",-25,0,5,0],["Отказаться: в уделе свои заботы",10,5,-20,0],["Тайно торговать с Казанью",15,0,-30,0]]],
+["1471","Поход на Новгород","Новгород готов перейти под руку Казимира Литовского. Иван III собирает рать; решается битва на Шелони.",[
+["Выставить дружину в московскую рать",-10,-25,20,1],["Тайно предупредить новгородцев",5,5,-10,0],["Объявить нейтралитет",0,0,-20,0],["Продавать хлеб обеим сторонам",20,0,-10,0]]],
+["1472","Брак с Софьей Палеолог","Великий князь женится на племяннице последнего византийского императора. При дворе шепчутся о греках и итальянцах.",[
+["Поздравить князя и принять новые порядки двора",-10,-10,10,1],["Роптать вместе с недовольными боярами",0,0,-15,0],["Уехать в удел и не приезжать",10,10,-10,0],["Жаловаться митрополиту",0,0,5,0,null,-5]]],
+["1476","Дань Орде","Хан Ахмат требует дани. Москва перестаёт платить: Орда слабеет, но возможен набег.",[
+["Поддержать отказ и усилить дружину",-10,-25,20,1],["Тайно заплатить хану от своего имени",-20,10,-15,0],["Предложить выкуп вместо князя",-30,0,10,0],["Увести людей вглубь страны",10,10,-10,0]]],
+["1478","Судьба новгородского веча","После походов 1477–1478 Новгород теряет самостоятельность. Князь советуется с боярами, что делать с вечем и вечевым колоколом.",[
+["Поддержать упразднение веча и вывоз колокола в Москву",-10,-10,20,1],["Просить сохранить вольности Новгорода",10,10,-20,0],["Скупать конфискованные новгородские земли",-15,25,-10,0],["Тайно предупредить новгородских бояр",-20,-10,-25,0]]],
+["1479","Ссора князя с братьями","Братья Ивана, Борис и Андрей Большой, недовольны и угрожают уйти к Литве.",[
+["Остаться верным Ивану",10,10,20,1],["Присоединиться к Андрею",-10,-5,-50,0],["Ждать, чья возьмёт",5,5,-10,0],["Продать припасы мятежным князьям",20,0,-20,0]]],
+["1479","Успенский собор","В Кремле освящён Успенский собор, строившийся итальянскими мастерами. Князь собирает вклады.",[
+["Дать средства на храм и убранство",-20,-20,40,1,null,10],["Дать лишь свечи",-5,0,10,1,null,5],["Потратить деньги на пир",-15,0,20,1],["Отказать",10,5,-15,1,null,-10]]],
+["1480","Стояние на Угре","Хан Ахмат идёт на Москву. Рати стоят на берегах Угры. Князь призывает бояр выставить людей.",[
+["Выставить дружину вместе с князем",-15,-15,10,1],["Отсидеться в уделе",10,10,-10,0],["Отправить гонца к Казимиру",-5,10,-5,0],["Отправить посла к Ахмату",-5,10,-10,0]]],
+["1484","Новгородские поместья","Новгородских бояр выводят с земель, а эти земли раздают служилым людям Москвы. Вам предлагают поместье.",[
+["Взять поместье с условием службы",5,10,10,1],["Отказаться от поместья",0,0,-5,0],["Захватить чужую землю силой",20,20,-20,0],["Выкупить новгородское поместье",-30,30,0,0]]],
+["1485","Поход на Тверь","Князь собирает полки против Твери. Михаил Борисович ищет помощи у Литвы.",[
+["Выставить дружину в поход на Тверь",-10,-10,10,1],["Предупредить тверского князя",-10,-5,-20,0],["Остаться дома",0,0,-5,0],["Уйти на службу к Литве",-20,-10,-25,0]]],
+["1487","Казань под рукой Москвы","Русские рати берут Казань, на престол посажен хан Мухаммед-Амин.",[
+["Отправить людей в поход",-15,-10,10,1],["Отказать в людях",10,5,-15,0],["Отправить дары хану",-15,0,0,0],["Остаться дома, а добычу делить",5,5,-10,0]]],
+["1489","Вятская земля","Москва присоединяет Вятку. Требуются люди и припасы.",[
+["Послать людей и припасы",-10,-10,10,1],["Послать только припасы",-5,0,-5,0],["Отложить дело",0,5,-10,0],["Нажиться на поставках",15,0,-15,0]]],
+["1491","Арест Андрея Большого","Великий князь арестовывает брата Андрея Углицкого. Бояр спрашивают, на чьей они стороне.",[
+["Одобрить решение князя",-10,-5,10,1],["Просить за Андрея",0,0,-15,0],["Присоединиться к недовольным",-10,-5,-20,0],["Промолчать",0,0,-5,0]]],
+["1492","Ивангород","Против Ливонии строится крепость Ивангород. Нужны работные люди.",[
+["Дать работных людей и материалы",-10,-5,10,1],["Откупиться серебром",-20,0,0,0],["Отказать: самим не хватает",5,5,-15,0],["Продать материалы втридорога",15,0,-15,0]]],
+["1494","Закрытие Немецкого двора","Ганзейское подворье в Новгороде закрыто. Торговля с Западом перестраивается.",[
+["Поддержать и торговать через Москву",-5,-5,10,1],["Тайно торговать с ганзейцами",15,0,-15,0],["Протестовать",-5,0,-10,0],["Остаться в стороне",0,0,-5,0]]],
+["1497","Судебник","Вводится общерусский Судебник. Выход крестьян ограничен неделей до и после Юрьева дня.",[
+["Принять Судебник и соблюдать порядок",-5,-5,10,1],["Удерживать крестьян силой",0,10,-20,0],["Отпускать крестьян без суда",5,-15,0,0],["Игнорировать новые правила",0,0,-15,0]]],
+["1500","Война с Литвой","Литовские князья переходят на службу Москве, начинается война (1500–1503, Ведроша).",[
+["Выставить дружину и принять перебежчиков",-10,-10,10,1],["Остаться в стороне",5,5,-10,0],["Поддержать Литву",-10,-5,-25,0],["Нанять наёмников",-25,0,0,0]]],
+["1502","Наследник престола","Иван III выбирает между внуком Дмитрием и сыном Василием. Двор разделился.",[
+["Поддержать Василия, как решил князь",-10,-5,10,1],["Поддержать Дмитрия Внука",-10,-5,-20,0,[3, 3]],["Сохранить нейтралитет",0,0,-10,0,[3, 3]],["Продать голос за награду",15,0,-15,0,[3, 3]]]]
+];
+var MD={
+ revolt:{n:"Крестьянский бунт",d:"Включается, если крепостных меньше 30 или больше 200. Утихает, когда их больше 60 (но не больше 200). Нажмите на плитку, чтобы решить, как поступить с бунтовщиками. Верный выбор в событии тоже снимает бунт.",e:[-5,-5,-10],off:0,win:1},
+ campaign:{n:"Княжеский военный поход",d:"Включается верным выбором на 10-м ходу. Нельзя отменить, закончится сам через 7 ходов.",e:[-10,-15,10],off:0},
+ opala:{n:"Опала",d:"Включается, если на 10-м ходу не поддержать князя или если авторитет становится ниже 40. Снимается решением в окне по нажатию на плитку, когда авторитет выше 80.",e:[0,0,-15],off:0,win:1},
+ glory:{n:"Славный род",d:"Ваш род в зените славы: решения дали власть, какая и не снилась отцу. Но пришли и недруги, которые будут пытаться отстранить Вас от власти. Включается, если авторитет выше 120, выключается, когда он ниже 80.",e:[10,10,-15],off:0},
+ hansa:{n:"Торговля с Ганзой через Новгород",d:"Ваши купцы везут в Европу пушнину по торговому пути Ганзейского союза. Теряется, если в событии «Закрытие Немецкого двора» выбрать любой вариант, кроме «Тайно торговать с ганзейцами».",e:[3,0,0],off:0},
+ feud:{n:"Междоусобица в имении",d:"Ваш отец недавно отбыл в мир иной, и теперь брат тоже претендует на родовое имение и богатства. Нажмите на плитку, чтобы урегулировать спор: нужен авторитет выше 100 и отсутствие «Опалы». Если не решить спор до 6-го хода, брат пойдёт в наступление.",e:[-7,-5,-5],off:0,win:1}
+};
+var BASE=[1,1,-1],S;
+// Справки: HI — что было на самом деле, AL — альтернативная история при неверном выборе
+var HI=[
+"Иван III наследовал отцу и получил присягу бояр и служилых князей. Те, кто подтвердил службу сразу, сохранили места при дворе.",
+"Ярославские князья передали права Москве и стали служилыми князьями. Московские бояре, поддержавшие присоединение, сохранили расположение князя.",
+"Казанские походы 1467–1469 велись московскими полками с участием служилых князей и бояр. В 1469 был заключён мир.",
+"14 июля 1471 московская рать разбила новгородское ополчение на Шелони. Новгород отказался от союза с Литвой.",
+"Брак 1472 года поднял престиж великого князя, при дворе начали работать итальянские мастера. Бояре, принявшие новые порядки, сохранили влияние.",
+"В 1470-е Москва перестала платить дань Орде (чаще называют 1476). Хан Ахмат ответил походом в 1480 году.",
+"В 1478 Новгород лишился вечевого строя, вечевой колокол вывезли в Москву. Бояре, поддержавшие великого князя, сохранили его доверие.",
+"В 1479–1480 братья Борис и Андрей Большой выступили против Ивана. Мир достигли уступками, а верные князю бояре остались в выигрыше.",
+"В 1479 освятили Успенский собор, построенный Аристотелем Фиораванти. Вклады служили знаком преданности великому князю.",
+"В 1480 рати Ивана III и хана Ахмата стояли на Угре. Хан не решился перейти реку и ушёл, а ордынская зависимость фактически закончилась.",
+"С 1484 новгородских бояр выводили, а земли раздавали служилым людям Москвы на условии службы. Так складывалась поместная система.",
+"В 1485 московские полки подошли к Твери, и князь Михаил Борисович бежал в Литву. Участники похода получили награды и места.",
+"Походы 1487 года привели к тому, что на казанском престоле утвердился дружественный Москве хан Мухаммед-Амин. Казань на долго попала под влияние Москвы.",
+"Вятская земля вошла в состав Москвы в 1489 году. Участие в походе зачитывалось боярам как служба.",
+"В 1491 Андрей Большой был арестован и умер в заточении, а его удел отошёл к великому князю. Поддержавшие Ивана бояре укрепили положение.",
+"Ивангород построили в 1492 году напротив Нарвы как крепость против Ливонии. Строили его силами казны и народа.",
+"В 1494 Ганзейский двор в Новгороде закрыли. Торговля с Западом перешла под больший контроль Москвы.",
+"Судебник 1497 года ограничил выход крестьян неделей до и после Юрьева дня. Он же ввёл единые правила суда для всей страны.",
+"Война 1500–1503 началась переходом к Москве верховских князей. Победа на Ведроше и перемирие 1503 дали Москве Чернигов и Брянск.",
+"Иван III сначала венчал внука Дмитрия (1498), но в 1502 передал великое княжение Василию. Поддержавшие Василия бояре сохранили места при новом дворе."];
+var AL=[
+"Без твёрдой присяги великий князь начинает считать Вас ненадёжным. Ваш род надолго остаётся на дальних местах при дворе.",
+"Ярославские земли всё равно переходят к Москве, но уже без Вашего участия. Выгодные пожалования достаются тем, кто согласился раньше.",
+"Казанский поход проходит без Вашей дружины, и князь запоминает отсутствие. Часть добычи и милостей уходит другим боярам.",
+"Новгородцы сильнее надеются на Литву, и война затягивается. Москва всё равно побеждает, но Ваш удел страдает от повинностей, а имя не звучит среди отличившихся.",
+"Придворные новшества приживаются и без Вас, а Ваше недовольство быстро становится известно. Вашему роду всё реже доверяют посольства и должности.",
+"Орда получает повод для более тяжёлых требований, а Москва вынуждена платить дольше. Окончательный разрыв с Ахматом откладывается, и пограничные земли страдают от набегов.",
+"Вечевые порядки сохраняются дольше, и Новгород остаётся источником смут. Князь видит в Вас советника, не поддержавшего единство страны.",
+"Смута между братьями затягивается, и страна слабее встречает внешнюю угрозу. Князь запоминает тех, кто колебался.",
+"Собор достраивают без Вашей доли, и вклады других бояр выставляются выше Ваших. При дворе Вас считают менее преданным.",
+"Без Вашей дружины московская рать на Угре слабее, и хан решается на переправу. Исход похода становится неопределённым, а Вашему роду долго припоминают отсутствие.",
+"Поместья в Новгороде достаются другим служилым людям, а Ваш род остаётся без прироста. Земли в старых областях удерживать становится труднее.",
+"Поход на Тверь идёт без Вашей дружины, и награды достаются другим. Князь замечает, что Вы не пришли на сбор.",
+"Казанская политика Москвы идёт тяжелее, а союзный хан укрепляется медленнее. Ваше имя в списках участников похода не значится.",
+"Вятка присоединяется позже и с большими затратами. Московская казна распределяет награды между теми, кто помогал.",
+"Спор с Андреем Большим тянется дольше, и при дворе растёт напряжение. Князь отдаляет тех, кого счёл сочувствующим брату.",
+"Ивангород строится дольше, и граница с Ливонией остаётся уязвимой. Вам достаётся меньше благодарности и меньше выгод от порубежья.",
+"Торговые пути через Новгород остаются под влиянием ганзейцев, и казна получает меньше пошлин. Ваша доля от торговли оказывается скромнее.",
+"Единые правила суда применяются неравномерно, и в уделе растут споры о крестьянах. Соседи жалуются на Вас князю, и тяжбы затягиваются.",
+"Война с Литвой идёт медленнее, а перебежчики реже переходят на сторону Москвы. Победа выглядит менее убедительной, а Ваше имя в списках отличившихся пропадает.",
+"Спор о наследнике обостряется, и двор делится на враждующие партии. Ваш род оказывается под подозрением у победившей стороны."];
+function report(o,i,d,r){
+ var e=EV[i],h="<h3>Справка: "+e[1]+"</h3><p class='yr'>"+e[0]+" год</p>";
+ if(o[4])h+="<p>"+HI[i]+"</p><p class='sig'>Исторично</p>";
+ else h+="<p>Вы выбрали: «"+o[0]+"».</p><p>"+AL[i]+"</p><p class='sig'>Не исторично</p>";
+ if(S.note)h+="<p><b>Модификаторы: "+S.note+"</b></p>";h+="<p><small>За решение: "+fmtO(o)+"<br>Прирост за ход: "+fmt(r)+"<br><b>Итого за ход: "+fmt(d)+"</b></small></p><button class='close' id='okr'>Продолжить</button>";
+ show(h,1);var go=function(){S.outside=null;hide();crisis(next)};$("okr").onclick=go;S.outside=go;
+}
+var $=function(i){return document.getElementById(i)},modal=$("modal"),card=$("card");
+function init(){S={m:100,k:100,a:80,base:null,dt:{},rev:{},pat:50,baseP:null,icon:null,iconT:0,iconHl:1,bookNew:1,t:0,ok:0,pend:null,lock:0,out:0,low:0,justOpala:0,newMod:1,opts:null,mods:{revolt:0,campaign:0,opala:0,glory:0,hansa:1,feud:1},note:""}}
+function modE(k){if(k==="campaign"&&S.icon==="michael")return [-5,-10,10];return MD[k].e}
+function rate(){var r=BASE.slice();for(var k in S.mods)if(S.mods[k]){var e=modE(k);for(var i=0;i<3;i++)r[i]+=e[i]}if(S.icon==="fedor")r[1]+=10;return r}
+function sg(n){return (n>0?"+":n<0?"−":"")+Math.abs(n)}
+function fmtO(o){return fmt([o[1],o[2],o[3]])+(o[6]?", Авторитет Патриарха "+sg(o[6]):"")}
+function fmt(e){return "Золото "+sg(e[0])+", Крепостные "+sg(e[1])+", Авторитет "+sg(e[2])}
+var SIL="<svg viewBox='0 0 100 100'><title>Выбрать икону</title><circle cx='50' cy='36' r='22' fill='none' stroke='#2e2118' stroke-width='3'/><path d='M50 18v36M38 30h24' stroke='#2e2118' stroke-width='2.5'/><circle cx='50' cy='38' r='13' fill='#2a1d14'/><path d='M18 98c0-26 14-38 32-38s32 12 32 38z' fill='#2a1d14'/></svg>";
+var MICH="<svg viewBox='0 0 100 100'><title>Архангел Михаил</title><rect width='100' height='100' fill='#1f2d52'/><path d='M50 42C30 30 12 38 6 64c14-6 24-4 32 4zM50 42C70 30 88 38 94 64c-14-6-24-4-32 4z' fill='#c9a24b' opacity='.9'/><path d='M32 100c0-26 8-40 18-40s18 14 18 40z' fill='#9b2d24'/><circle cx='50' cy='40' r='10' fill='#e8c9a0'/><circle cx='50' cy='40' r='17' fill='none' stroke='#f2d27a' stroke-width='2.5'/><path d='M74 24V72M67 32h14' stroke='#e6e6e6' stroke-width='3' stroke-linecap='round'/><path d='M68 24l6-10 6 10z' fill='#e6e6e6'/></svg>";
+var FED="<svg viewBox='0 0 100 100'><title>Феодоровская икона Божией Матери</title><rect width='100' height='100' fill='#b8862f'/><path d='M20 100c0-32 12-50 30-50s30 18 30 50z' fill='#6e1f2c'/><circle cx='50' cy='32' r='12' fill='#e6c79a'/><circle cx='50' cy='32' r='19' fill='none' stroke='#f4dc8a' stroke-width='3'/><path d='M36 30c0-18 28-18 28 0-4-8-24-8-28 0z' fill='#6e1f2c'/><circle cx='63' cy='66' r='8' fill='#e6c79a'/><circle cx='63' cy='66' r='11' fill='none' stroke='#f4dc8a' stroke-width='2'/><path d='M54 100c0-14 4-24 9-24s9 10 9 24z' fill='#e8dcbf'/></svg>";
+var SOF="<svg viewBox='0 0 100 100'><title>София Премудрость Божия</title><rect width='100' height='100' fill='#2f4a3a'/><path d='M50 46C28 30 8 40 2 68c16-8 28-6 36 4zM50 46C72 30 92 40 98 68c-16-8-28-6-36 4z' fill='#d9604f' opacity='.9'/><path d='M30 100c0-28 8-44 20-44s20 16 20 44z' fill='#c0392b'/><circle cx='50' cy='38' r='11' fill='#e8a090'/><circle cx='50' cy='38' r='18' fill='none' stroke='#f2d27a' stroke-width='3'/><rect x='62' y='64' width='20' height='15' fill='#e8dcbf' stroke='#2b1d12' stroke-width='1.5'/><path d='M72 64v15' stroke='#2b1d12'/></svg>";
+var ICONS=[
+ {id:"michael",n:"Архангел Михаил",d:"Бонус: у «Княжеского военного похода» золото −5 и крепостные −10 за ход вместо −10 и −15",svg:MICH},
+ {id:"fedor",n:"Феодоровская икона Божией Матери",d:"Древний образ Костромы, покровительница семьи. Бонус: крепостные +10 за ход",svg:FED},
+ {id:"sofia",n:"«София Премудрость Божия»",d:"Новгородский извод конца XV века. Бонус: в книге видно, сколько золота, крепостных и авторитета даст каждое решение",svg:SOF}];
+var IC={pf:"<svg viewBox='0 0 16 16'><title>Крестьянский бунт</title><path d='M3 2v5a3 3 0 0 0 3 3M8 2v12M13 2v5a3 3 0 0 1-3 3' stroke='#c9a24b' stroke-width='1.6' fill='none' stroke-linecap='round'/></svg>",
+ coin:"<svg viewBox='0 0 16 16'><title>Торговля с Ганзой</title><g fill='#c9a24b' stroke='#2b1d12' stroke-width='.8'><ellipse cx='8' cy='12.5' rx='6' ry='2.2'/><ellipse cx='8' cy='9.5' rx='6' ry='2.2'/><ellipse cx='8' cy='6.5' rx='6' ry='2.2'/><ellipse cx='8' cy='3.5' rx='6' ry='2.2'/></g></svg>",
+ wr:"<svg viewBox='0 0 16 16'><title>Славный род</title><path d='M8 14C3 13 1.5 8 4 3M8 14c5-1 6.5-6 4-11' stroke='#8fbf6a' stroke-width='1.4' fill='none'/><g fill='#8fbf6a'><ellipse cx='3.2' cy='6' rx='1.6' ry='.9' transform='rotate(-40 3.2 6)'/><ellipse cx='3.6' cy='9.5' rx='1.6' ry='.9' transform='rotate(-20 3.6 9.5)'/><ellipse cx='12.8' cy='6' rx='1.6' ry='.9' transform='rotate(40 12.8 6)'/><ellipse cx='12.4' cy='9.5' rx='1.6' ry='.9' transform='rotate(20 12.4 9.5)'/></g></svg>",
+ cr:"<svg viewBox='0 0 16 16'><title>Опала</title><g fill='#d9604f'><path d='M2 12V5l3 3 2.2-4V12z'/><path d='M9 13V4.5L11 8l3-3v8z'/></g></svg>"};
+var LKC="<svg class='lk' viewBox='0 0 16 16'><rect x='3' y='7' width='10' height='7' rx='1' fill='#8a2f26'/><path d='M5 7V5a3 3 0 0 1 6 0v2' fill='none' stroke='#8a2f26' stroke-width='1.6'/></svg>",
+ LKO="<svg class='lk' viewBox='0 0 16 16'><rect x='3' y='7' width='10' height='7' rx='1' fill='#3f7d3f'/><path d='M5 7V5a3 3 0 0 1 5.8-1' fill='none' stroke='#3f7d3f' stroke-width='1.6'/></svg>";
+function setDelta(id,v){var e=$(id),t=v?"("+sg(v)+")":"";if(S.dt[id]===t)return;S.dt[id]=t;e.className="dl";e.textContent=t;if(t){void e.offsetWidth;e.className="dl "+(v>0?"pos":"neg")}}
+function render(){
+ var r=rate();
+ setDelta("dP",S.baseP===null?0:S.pat-S.baseP);
+ $("vM").textContent=S.m;$("vK").textContent=S.k;$("vA").textContent=S.a;
+ var bs=S.base;setDelta("dM",bs?S.m-bs[0]:0);setDelta("dK",bs?S.k-bs[1]:0);setDelta("dA",bs?S.a-bs[2]:0);
+ $("iK").innerHTML=S.mods.revolt?IC.pf:"";$("iM").innerHTML=S.mods.hansa?IC.coin:"";$("iA").innerHTML=(S.mods.glory?IC.wr:"")+(S.mods.opala?IC.cr:"");
+ $("rM").textContent=sg(r[0])+" за ход";$("rK").textContent=sg(r[1])+" за ход";$("rA").textContent=sg(r[2])+" за ход";
+ $("sM").classList.toggle("low",S.m<20);$("sK").classList.toggle("low",S.k<40);$("sA").classList.toggle("low",S.a<20);
+ $("turn").textContent="Ход "+Math.min(S.t+1,20)+" из 20";
+ $("ink").classList.toggle("glow",!!S.pend);
+ $("inkL").textContent=S.pend?"Подписать указ":"Чернильница";
+ $("candle").classList.toggle("alert",!!S.newMod);
+ $("book").classList.toggle("nudge",!!S.bookNew);
+ $("vP").textContent=S.pat;$("icon").classList.toggle("hl",!!S.iconHl&&S.t===0);var cu=ICONS.filter(function(x){return x.id===S.icon})[0];$("icon").innerHTML=cu?cu.svg+"<span class='ib'>"+S.iconT+"</span>":SIL;
+ renderTug();
+}
+var TUG=["Полная раздробленность","Раздробленность","Склонность к раздробленности","Паритет","Склонность к централизации","Централизация","Полная централизация"];
+function cen(){return Math.min(6,Math.round(S.t*6/19))-3}
+var TL=["−3","−2","−1","0","+1","+2","+3"];
+function lockMsg(r){if(!r)return null;var c=cen();return(c>=r[0]&&c<=r[1])?"Решение недоступно, так как централизация = "+TL[c+3]:null}
+function renderTug(){var p=cen()+3,h="";for(var i=0;i<7;i++)h+="<div class='seg"+(i===3?" mid":"")+(i===p?" on":"")+"'>"+TL[i]+"</div>";$("segs").innerHTML=h;$("tugcap").textContent=TUG[p]+" ("+TL[p]+")"+(p===3?", без бонусов":"")}
+function snap(){var o={};for(var k in S.mods)o[k]=!!S.mods[k];return o}
+function chk(b){for(var k in S.mods)if(S.mods[k]&&!b[k])S.newMod=1}
+function triggers(){
+ var out=S.k<30||S.k>200;
+ if(out&&!S.out&&!S.mods.revolt){S.mods.revolt=1;S.note+="Начался крестьянский бунт. "}
+ else if(S.mods.revolt&&S.k>60&&S.k<=200){S.mods.revolt=0;S.note+="Бунт утих. "}
+ S.out=out;
+ var low=S.a<40;
+ if(low&&!S.low&&!S.mods.opala){S.mods.opala=1;S.note+="Авторитет упал ниже 40, Вы в опале. "}
+ S.low=low;
+ if(!S.mods.glory&&S.a>120){S.mods.glory=1;S.note+="Ваш род в зените славы. "}
+ else if(S.mods.glory&&S.a<80){S.mods.glory=0;S.note+="Слава рода померкла. "}
+}
+function toast(s){var t=$("toast");t.textContent=s;t.classList.add("on");clearTimeout(toast.h);toast.h=setTimeout(function(){t.classList.remove("on")},3200)}
+function show(h,lock){S.lock=lock?1:0;S.outside=null;card.innerHTML=h;modal.classList.add("on");var b=card.querySelector("button:not(:disabled)");if(b)b.focus()}
+function hide(){S.lock=0;S.outside=null;modal.classList.remove("on")}
+modal.addEventListener("click",function(e){if(e.target!==modal)return;if(!S.lock)hide();else if(S.outside)S.outside()});
+document.addEventListener("keydown",function(e){if(e.key==="Escape"){if(!S.lock)hide();else if(S.outside)S.outside()}});
+function shuf(a){a=a.slice();for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1)),x=a[i];a[i]=a[j];a[j]=x}return a}
+
+$("book").onclick=function(){
+ if(S.lock)return;
+ S.bookNew=0;render();
+ var ev=EV[S.t],h="<h3>"+ev.slice(1,2)+"</h3><p class='yr'>"+ev[0]+" год</p><p>"+ev[2]+"</p>";
+ var opts=S.opts||(S.opts=shuf(ev[3]));
+ opts.forEach(function(o,i){var sel=S.pend===o,lm=lockMsg(o[5]);h+='<button class="opt'+(sel?' sel':'')+(lm?' lock':'')+'" data-i="'+i+'"'+(lm?' aria-disabled="true" title="'+lm+'"':'')+'>'+(lm?LKC:'')+(sel?'✓ ':'')+o[0]+(S.icon==='sofia'?'<small>'+fmtO(o)+'</small>':'')+(sel?'<small>Ваш выбор. Можно изменить, пока указ не подписан.</small>':'')+(lm?'<small class="tip">'+lm+'</small>':'')+'</button>'});
+ h+='<button class="close" id="cl">Закрыть книгу</button>';
+ show(h);
+ card.querySelectorAll(".opt").forEach(function(b){b.onclick=function(){var lm=lockMsg(opts[+b.dataset.i][5]);if(lm){toast(lm);return}S.pend=opts[+b.dataset.i];hide();render();toast("Решение принято. Подпишите указ чернильницей или измените выбор в книге.")}});
+ $("cl").onclick=hide;
+};
+$("ink").onclick=function(){
+ if(S.lock)return;
+ if(!S.pend){toast("Нечего подписывать. Откройте книгу.");return}
+ var o=S.pend,r0=[S.m,S.k,S.a],bf=snap();S.base=r0;S.baseP=S.pat;S.pend=null;S.opts=null;S.note="";
+ S.m+=o[1];S.k+=o[2];S.a+=o[3];S.pat=Math.max(0,S.pat+(o[6]||0));
+ if(o[4]){S.ok++;S.mods.revolt=0}
+ if(S.t===9){if(o[4]){S.mods.campaign=7;S.note+="Начался княжеский поход. "}else if(!S.mods.opala){S.mods.opala=1;S.justOpala=1;S.note+="Вы в опале. "}}
+ if(EV[S.t][1]==="Закрытие Немецкого двора"&&S.mods.hansa&&o[0]!=="Тайно торговать с ганзейцами"){S.mods.hansa=0;S.note+="Торговля с Ганзой потеряна. "}
+ var r=rate();S.m+=r[0];S.k+=r[1];S.a+=r[2];if(S.mods.campaign>0)S.mods.campaign--;
+ if(S.iconT>0){S.iconT--;if(S.iconT===0){S.icon=null;S.note+="Действие иконы закончилось. "}}
+ triggers();chk(bf);S.justOpala=0;
+ var d=[S.m-r0[0],S.k-r0[1],S.a-r0[2]];
+ render();report(o,S.t,d,r);
+};
+function next(){S.t++;S.bookNew=1;render();if(S.t>=20)finish();else if(S.t===5&&S.mods.feud)feudForced()}
+function feudForced(){
+ var O=[["Призвать царя для урегулирования конфликта","Авторитет −60",S.a>100,"Нужен авторитет выше 100",function(){S.a-=60}],
+  ["Брат согласен оставить нам 1/3 имения","Золото и крепостные уменьшаются в 3 раза",null,"",function(){S.m=Math.round(S.m/3);S.k=Math.round(S.k/3)}],
+  ["Дать бой","Золото −30, крепостные −30",S.m>60&&S.k>60,"Нужно больше 60 золота и больше 60 крепостных",function(){S.m-=30;S.k-=30}],
+  ["Сдаться","Поражение",null,"",null]];
+ var h="<h3>Брат пошёл в наступление</h3><p>Брат заручился поддержкой нескольких родов и родственников, перешёл в наступление и активно присваивает имение себе.</p>";
+ O.forEach(function(o,i){var chk_=o[2],ic=chk_===null?"":(chk_?LKO:LKC),lk=chk_===false;h+="<button class='opt"+(lk?" lock":"")+"' data-i='"+i+"'"+(lk?" aria-disabled='true' title='Решение недоступно: "+o[3]+"'":"")+">"+ic+o[0]+"<small>"+o[1]+"</small>"+(lk?"<small class='tip'>Решение недоступно: "+o[3]+"</small>":"")+"</button>"});
+ show(h,1);
+ card.querySelectorAll(".opt").forEach(function(b){b.onclick=function(){
+  var o=O[+b.dataset.i];if(o[2]===false){toast("Решение недоступно: "+o[3]);return}
+  if(!o[4]){lose("Брат присвоил имение целиком, а Ваши люди разошлись по соседним вотчинам. Род лишился земли, и его имя быстро забыли.","Род угас");return}
+  var bf=snap();S.note="";o[4]();S.mods.feud=0;triggers();chk(bf);hide();render();toast("Конфликт закончен. "+S.note);crisis(function(){});}});
+}
+function lose(why,ttl){S.lock=1;render();show("<h3>"+(ttl||"Поражение")+"</h3><p>"+why+"</p><button class='close' id='rs'>Начать заново</button>",1);$("rs").onclick=restart}
+function crisis(done){
+ if(S.a<=0)return lose("Род потерял признание и больше не может влиять на дела страны. Этого не исправить.");
+ if(S.m<=0){var c=S.k>=50&&S.a>=50;
+  show("<h3>Род обеднел</h3><p>Казна пуста. Можно продать 50 крепостных и 50 единиц авторитета за 100 золота.</p><button class='opt' id='y'"+(c?"":" disabled")+">Продать крестьян и титулы</button><button class='opt' id='n'>Смириться с нищетой</button>",1);
+  $("y").onclick=function(){S.k-=50;S.a-=50;S.m+=100;hide();render();crisis(done)};
+  $("n").onclick=function(){lose("Род обеднел и распался.")};return}
+ if(S.k<=0){var c2=S.m>=50;
+  show("<h3>Некому пахать</h3><p>Крепостных не осталось. Можно отдать 50 золота и получить 25 крестьян.</p><button class='opt' id='y'"+(c2?"":" disabled")+">Обменять золото на крестьян</button><button class='opt' id='n'>Оставить землю пустой</button>",1);
+  $("y").onclick=function(){S.m-=50;S.k+=25;hide();render();crisis(done)};
+  $("n").onclick=function(){lose("Земля заросла, некому её обрабатывать.")};return}
+ done();
+}
+function finish(){
+ var n=S.ok;
+ if(n>=14)show("<h3>Победа</h3><p>1505 год. Иван III умирает, власть переходит к Василию III. Ваш род укрепился при складывании единого государства.</p><p>Исторически верных решений: "+n+" из 20.</p><button class='close' id='rs'>Играть снова</button>",1);
+ else show("<h3>Поражение</h3><p>1505 год. Страна стала единой, но Ваш род остался без места при новом дворе.</p><p>Исторически верных решений: "+n+" из 20 (для победы нужно 14).</p><button class='close' id='rs'>Играть снова</button>",1);
+ $("rs").onclick=restart;
+}
+function mods(){
+ if(S.lock)return;
+ S.newMod=0;render();
+ var h="<h3>Модификаторы</h3><p>Действуют в конце каждого хода. Базовый прирост: "+fmt(BASE)+".</p><div class='tiles'>";
+ var ORD=["feud","revolt","campaign","opala","glory","hansa"];for(var ii=0;ii<ORD.length;ii++){var k=ORD[ii];var m=MD[k],on=S.mods[k];
+  h+="<button class='tile"+(on?" on":"")+((on&&(m.off||m.win))?" click":"")+"' data-k='"+k+"'><b>"+m.n+"</b>"+fmt(modE(k))+" за ход<small>"+m.d+"</small><small>"+(on?"Активен"+(k==="campaign"?", осталось ходов: "+on:"")+(m.off?" (нажмите, чтобы выключить)":(m.win?" (нажмите, чтобы решить)":"")):"Не активен")+"</small></button>"}
+ h+="</div><button class='close' id='cl'>Закрыть</button>";
+ show(h);$("cl").onclick=hide;
+ card.querySelectorAll(".tile").forEach(function(t){t.onclick=function(){var k=t.dataset.k;if(MD[k].win&&S.mods[k]){eventWin(k);return}if(S.mods[k]&&MD[k].off){S.mods[k]=0;render();mods()}}});
+}
+var WINS={
+ feud:{t:"Междоусобица в имении",p:"Брат оспаривает родовое имение. Любое решение навсегда снимет этот модификатор.",
+  ok:function(){return S.a>100&&!S.mods.opala},no:"Урегулировать спор можно, только когда авторитет выше 100 и Вы не в опале.",
+  o:[["Поделить имение поровну и провозгласить другую ветку рода","Золото и крепостные уменьшаются вдвое, авторитет не меняется",function(){S.m=Math.round(S.m/2);S.k=Math.round(S.k/2)}],
+   ["Просить Ивана III решить спор в Вашу пользу","Авторитет −30",function(){S.a-=30}],
+   ["Купить поддержку знатных бояр","Золото −20, крепостные −20, авторитет −10",function(){S.m-=20;S.k-=20;S.a-=10}],
+   ["Убить брата","Крепостные −20, авторитет −20",function(){S.k-=20;S.a-=20}],
+   ["Повременить с решением","Ничего не меняется, модификатор остаётся",null]]},
+ revolt:{t:"Крестьянский бунт",p:"Крестьяне взялись за вилы. Как Вы поступите?",
+  o:[["Заплатить бунтовщикам","Золото −20, бунт снимается",function(){S.m-=20}],
+   ["Пригласить царские войска для подавления","Авторитет −20, бунт снимается",function(){S.a-=20}],
+   ["Ничего не делать","Бунт остаётся",null]]},
+ opala:{t:"Опала",p:"Вы в немилости у великого князя. Как её загладить?",
+  ok:function(){return S.a>80},no:"Снять опалу можно, только когда авторитет выше 80.",
+  o:[["Принести дары","Золото −40, опала снимается",function(){S.m-=40}],
+   ["Подарить крестьян","Крепостные −40, опала снимается",function(){S.k-=40}],
+   ["Снарядить дружину","Золото −20, крепостные −20, опала снимается",function(){S.m-=20;S.k-=20}]]}
+};
+function eventWin(k){
+ var w=WINS[k];if(!w||!S.mods[k])return;
+ if(w.ok&&!w.ok()){hide();toast(w.no);return}
+ var h="<h3>"+w.t+"</h3><p>"+w.p+"</p>";
+ w.o.forEach(function(o,i){var lm=lockMsg(o[3]);h+="<button class='opt"+(lm?" lock":"")+"' data-i='"+i+"'"+(lm?" aria-disabled='true' title='"+lm+"'":"")+">"+(lm?LKC:"")+o[0]+"<small>"+o[1]+"</small>"+(lm?"<small class='tip'>"+lm+"</small>":"")+"</button>"});
+ h+="<button class='close' id='cl'>Отмена</button>";show(h);$("cl").onclick=hide;
+ card.querySelectorAll(".opt").forEach(function(b){b.onclick=function(){
+  var o=w.o[+b.dataset.i];var lm=lockMsg(o[3]);if(lm){toast(lm);return}
+  if(!o[2]){hide();toast("Вы повременили с решением.");return}
+  var bf=snap();S.note="";o[2]();S.mods[k]=0;triggers();chk(bf);hide();render();toast("Решение принято. "+S.note);crisis(function(){});}});
+}
+$("candle").onclick=mods;
+function iconWin(){
+ if(S.lock)return;
+ S.iconHl=0;render();
+ var act=S.icon,can=S.pat>=50&&!act;
+ var h="<h3>Икона</h3><p>Выбор иконы даёт бонус на 3 хода, потом её нужно выбрать заново. Одновременно действует одна икона. Стоимость — 50 авторитета Патриарха. Сейчас у Вас: "+S.pat+".</p>";
+ ICONS.forEach(function(x,i){var has=act===x.id,lk=!has&&!can;
+  h+="<button class='opt"+(has?" sel":(lk?" lock":""))+"' data-i='"+i+"'"+(lk?" aria-disabled='true'":"")+">"+(has?"✓ ":(lk?LKC:LKO))+x.n+"<small>"+x.d+"</small>"+(has?"<small>Икона выбрана, осталось ходов: "+S.iconT+"</small>":(lk?"<small class='tip'>"+(act?"Дождитесь окончания действия иконы":"Недостаточно авторитета Патриарха")+"</small>":""))+"</button>"});
+ h+="<button class='close' id='cl'>Закрыть</button>";show(h);$("cl").onclick=hide;
+ card.querySelectorAll(".opt").forEach(function(b){b.onclick=function(){var x=ICONS[+b.dataset.i];if(S.icon||S.pat<50)return;S.pat-=50;S.icon=x.id;S.iconT=3;hide();render();toast("Выбрана икона: "+x.n+".")}});
+}
+$("icon").onclick=iconWin;
+$("patbox").onclick=iconWin;$("patbox").onkeydown=function(e){if(e.key==="Enter"||e.key===" "){e.preventDefault();iconWin()}};
+var ORD2=["feud","revolt","campaign","opala","glory","hansa"],RN=["Золото","Крепостные","Авторитет"];
+function showRate(i){
+ if(S.lock)return;
+ var rows=[["Базовый прирост",BASE[i]]];
+ ORD2.forEach(function(k){if(S.mods[k]){var v=modE(k)[i];if(v)rows.push([MD[k].n+(k==="campaign"&&S.icon==="michael"?" (с иконой Архангела Михаила)":""),v])}});
+ if(S.icon==="fedor"&&i===1)rows.push(["Феодоровская икона Божией Матери",10]);
+ var tot=0,h="<h3>"+RN[i]+": прирост за ход</h3><p>Из чего складывается изменение в конце каждого хода (без учёта самого решения в книге).</p>";
+ rows.forEach(function(r){tot+=r[1];h+="<div style='display:flex;justify-content:space-between;gap:12px;padding:3px 0;border-bottom:1px solid #c9b98f'><span>"+r[0]+"</span><b style='color:"+(r[1]>0?"#2f7a2f":r[1]<0?"#a3321f":"inherit")+"'>"+sg(r[1])+"</b></div>"});
+ h+="<div style='display:flex;justify-content:space-between;padding:8px 0'><b>Итого за ход</b><b>"+sg(tot)+"</b></div><button class='close' id='cl'>Закрыть</button>";
+ show(h);$("cl").onclick=hide;
+}
+[["sM",0],["sK",1],["sA",2]].forEach(function(p){var e=$(p[0]);e.onclick=function(){showRate(p[1])};e.onkeydown=function(ev){if(ev.key==="Enter"||ev.key===" "){ev.preventDefault();showRate(p[1])}}});
+function openGuide(){
+ var h="<h3>Донесения: как было</h3><p>Вы играете за боярина-феодала с уделом в Подмосковье, служилого человека Москвы. Записи открываются по очереди: после Вашего выбора на ходу или по кнопке «Получить подсказку».</p><ol class='guide' style='padding-left:22px'>";
+ EV.forEach(function(e,i){
+  var open=i<S.t||S.rev[i],c=e[3].filter(function(o){return o[4]})[0];
+  if(open)h+="<li><b>"+e[0]+", "+e[1]+".</b> Выберите «"+c[0]+"». "+HI[i]+"</li>";
+  else if(i===S.t)h+="<li style='background:#e8c96a'><b>Ход "+(i+1)+": "+e[0]+", "+e[1]+".</b> Запись закрыта. <button class='close' id='cat'>Получить подсказку</button></li>";
+  else h+="<li style='opacity:.55'><b>Ход "+(i+1)+".</b> Запись закрыта.</li>";
+ });
+ h+="</ol><button class='close' id='cl'>Закрыть</button>";show(h);$("cl").onclick=hide;
+ if($("cat"))$("cat").onclick=function(){S.rev[S.t]=1;openGuide()};
+}
+$("stack").onclick=function(){if(S.lock)return;openGuide()};
+init();render();
+function intro(){
+show("<h3>1462 год</h3><p>Вы — боярин-феодал с уделом в Подмосковье и служите великому князю московскому. На престол вступает Иван III. Пройдите 20 ходов до 1505 года, служа Москве и сохраняя свой род. Выбирайте решения в книге и подписывайте указы чернильницей.</p><p>Есть и семейная беда: отец недавно умер, и брат претендует на родовое имение. Пока спор не улажен, модификатор «Междоусобица в имении» отнимает у Вас 7 золота, 5 крепостных и 5 авторитета за ход. Если не уладить спор до 6-го хода, брат пойдёт в наступление, и придётся принимать тяжёлое решение. Урегулировать его можно в меню свечи, но только когда Ваш авторитет выше 100 и Вы не в опале.</p><button class='close' id='st'>Начать</button>");$("st").onclick=hide;
+}
+function showScenarios(){
+ show("<h3>Выберите сценарий</h3><div class='scn'>"
+  +"<button class='sc' id='sc1'><b>Иван III</b><small>1462–1505. Боярин-феодал с уделом в Подмосковье при великом князе московском.</small></button>"
+  +"<button class='sc lock' id='sc2' aria-disabled='true' title='В разработке'><b>"+LKC+"Пётр I</b><small>В разработке</small></button></div>",1);
+ $("sc1").onclick=intro;$("sc2").onclick=function(){};
+}
+function restart(){init();hide();render();showScenarios()}
+showScenarios();
+</script>
+</body>
+</html>
